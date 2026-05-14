@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Professional Market Scanner — Numbers First</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+
+<!-- ── Disclaimer Banner (one-time, dismissible) ── -->
+<div id="disclaimer-banner" style="display:none">
+  <div class="disc-banner-icon">⚠️</div>
+  <div class="disc-banner-text">
+    <strong>Personal Research Tool</strong> — Not licensed financial advice. 
+    AI analysis may contain errors. Always verify with a licensed advisor before making investment decisions.
+    <a href="#" onclick="openDisclaimerModal();return false">Read full disclaimer →</a>
+  </div>
+  <button class="disc-banner-close" onclick="dismissDisclaimerBanner()" title="Dismiss">✕</button>
+</div>
+
+<div class="watermark-top">
+  <div class="watermark-top-credit">
+    <span class="watermark-top-credit-label">Created by</span>
+    <span class="watermark-top-credit-name">Al-Moutaz Billah Tarabzouni</span>
+  </div>
+  <div class="watermark-top-divider"></div>
+  <a class="watermark-top-handle" href="https://x.com/Moutaz_ez" target="_blank" rel="noopener noreferrer" title="Follow on X">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+    @Moutaz_ez
+  </a>
+</div>
+
+<div class="hdr">
+  <div class="hdr-left">
+    <h1>Professional Market Scanner <span class="hdr-tag">Personal Research Tool</span></h1>
+    <p id="upd">Select analysis mode to begin</p>
+    <p id="watchdog-log" style="display:none;font-size:10px;color:var(--green);margin-top:2px;font-family:var(--mono)"></p>
+  </div>
+  <div class="hdr-right">
+    <div id="price-indicator">
+      <span id="pi-dot" class="live-dot" style="background:var(--text3);animation:none"></span>
+      <span id="pi-label">Prices not loaded</span>
+    </div>
+    <div id="ar-timer" class="ar-timer" onclick="toggleAutoRefresh()" title="Toggle auto-refresh every 2 min (press R)">⟳ Auto</div>
+    <!-- Compact icon group: theme + API + audit + health all in one cluster -->
+    <div class="hdr-tools">
+      <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle Dark/Light (T)">☀️</button>
+      <button class="apikey-btn" id="apikey-btn" onclick="toggleApiKeyModal()" title="Manage API Keys">
+        <span class="apikey-dot" id="apikey-dot"></span>
+        <span id="apikey-btn-label">API</span>
+      </button>
+      <button id="audit-trigger-btn" onclick="toggleAuditPanel()" title="Code audit (Claude integrity check)">
+        <span class="audit-trigger-dot"></span><span class="audit-label">OK</span>
+      </button>
+      <button id="bot-health-btn" class="bh-perfect" onclick="toggleBotHealthPanel()" title="Bot Health — click for details (H)" type="button">
+        <span class="bh-dot"></span>
+        <span class="bh-pct" id="bh-pct-display">100%</span>
+      </button>
+      <button id="auto-heal-btn" onclick="openAutoHealPanel()" title="Auto-Repair issues detected — click to fix" type="button">
+        <span class="ah-btn-icon">🛠️</span>
+        <span class="ah-btn-count">0</span>
+        <span>Fix</span>
+      </button>
+    </div>
+    <span class="sts" id="sts" title="System status" style="cursor:help;display:none">Ready</span>
+  </div>
+</div>
+
+<!-- ── Bot Health Detail Panel ── -->
+<div id="bot-health-detail" role="dialog" aria-label="Bot Health Details">
+  <div class="bhd-hdr">
+    <span class="bhd-title">🛡️ Bot Health</span>
+    <button class="bhd-close" onclick="closeBotHealthPanel()" title="Close">×</button>
+  </div>
+  <div class="bhd-score">
+    <div class="bhd-score-pct" id="bhd-score-pct">100%</div>
+    <div class="bhd-score-label" id="bhd-score-label">All Systems Healthy</div>
+  </div>
+  <div class="bhd-checks" id="bhd-checks"></div>
+  <div class="bhd-footer">
+    <span id="bhd-timestamp">—</span>
+    <div style="display:flex;gap:6px">
+      <button class="bhd-recheck" onclick="openAutoHealPanel()" title="Diagnose and fix issues automatically" style="border-color:rgba(255,179,64,.3);color:var(--amber)">🛠️ Auto-Fix</button>
+      <button class="bhd-recheck" onclick="runBotHealthCheck(true)">↻ Re-check</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── API Key Modal ── -->
+<div class="apikey-modal-ov" id="apikey-modal-ov" onclick="if(event.target===this)closeApiKeyModal()">
+  <div class="apikey-modal">
+    <div class="apikey-modal-hdr">
+      <h3>🔑 API Key Management</h3>
+      <button class="apikey-modal-close" onclick="closeApiKeyModal()">✕</button>
+    </div>
+    <div class="apikey-modal-body">
+
+      <!-- Finnhub -->
+      <div class="apikey-row">
+        <div class="apikey-row-label">Live Prices · Charts · Technicals</div>
+        <div class="apikey-row-name">Finnhub API Key</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap">
+          <span class="apikey-lock-badge green">🔒 Locked &amp; Active</span>
+          <span style="font-size:11px;color:var(--text3);font-family:monospace">d75u...mgg</span>
+        </div>
+        <div class="apikey-note">✓ Hardcoded permanently · 60 req/min · Both scan options</div>
+        <input type="hidden" id="fh-key-inp" value="">
+        <div id="fh-saved" style="display:none"></div>
+      </div>
+
+      <!-- Anthropic -->
+      <div class="apikey-row">
+        <div class="apikey-row-label">AI Analysis · Chat · New Stocks · Live News</div>
+        <div class="apikey-row-name">Anthropic API Key</div>
+        <div id="ant-key-section">
+          <div class="apikey-note" style="margin-bottom:.6rem">Needed for Option 2 (new stocks outside database) and live news.<br>Get free key: <a href="https://console.anthropic.com" target="_blank" style="color:var(--blue)">console.anthropic.com</a></div>
+          <div class="apikey-inp-row">
+            <input type="password" id="api-key-inp" placeholder="sk-ant-api03-..." autocomplete="off">
+            <button onclick="saveKey()">Save &amp; Lock 🔒</button>
+          </div>
+          <div id="api-saved" style="display:none;color:var(--green);font-size:11px;margin-top:5px;font-weight:600">✓ Key locked permanently</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<div class="tabs" style="overflow-x:auto">
+  <button class="tab active" id="tab1" onclick="setMode(1)" style="min-width:130px">📊 Market Scan</button>
+  <button class="tab" id="tab2" onclick="setMode(2)" style="min-width:130px">🔍 Any Stock</button>
+  <button class="tab" id="tab3" onclick="setMode(3)" style="min-width:110px">💼 Portfolio</button>
+  <button class="tab" id="tab4" onclick="setMode(4)" style="min-width:100px">🔔 Alerts</button>
+  <button class="tab" id="tab5" onclick="setMode(5)" style="min-width:100px">📜 History</button>
+  <button class="tab" id="tab7" onclick="setMode(7)" style="min-width:120px">💧 Liquidity</button>
+  <button class="tab" id="tab8" onclick="setMode(8)" style="min-width:130px">🏛️ Elite Engine</button>
+  <button class="tab" id="tab9" onclick="setMode(9)" style="min-width:110px">👁 Watchlist</button>
+</div>
+<!-- Compare bar -->
+<div class="compare-bar" id="compare-bar">
+  <span style="color:var(--blue);font-weight:600">Compare:</span>
+  <span id="compare-tickers" style="color:var(--text)"></span>
+  <button class="btn-sm" onclick="openComparison()" style="font-size:11px;padding:4px 10px;color:var(--blue);border-color:var(--blue-dark,#1866E8)">View Comparison ↗</button>
+  <button class="btn-sm" onclick="clearCompare()" style="font-size:11px;padding:4px 10px;color:var(--text3);margin-left:auto">✕ Clear</button>
+</div>
+
+<!-- Panel 1 -->
+<div class="panel active" id="p1">
+  <div class="frow">
+    <div class="fgrp">
+      <select id="f-sec">
+        <option value="all">All Sectors</option>
+        <option value="energy">Energy</option>
+        <option value="tech">Technology</option>
+        <option value="finance">Finance</option>
+        <option value="healthcare">Healthcare</option>
+        <option value="biotech">Biotech</option>
+        <option value="industrial">Industrial</option>
+        <option value="consumer">Consumer</option>
+        <option value="materials">Materials</option>
+        <option value="utilities">Utilities</option>
+        <option value="realestate">Real Estate</option>
+        <option value="communication">Communication</option>
+        <option value="defense">Defense</option>
+        <option value="uranium">Uranium</option>
+        <option value="mining">Mining</option>
+        <option value="cannabis">Cannabis</option>
+        <option value="gambling">Gambling</option>
+        <option value="crypto">Crypto</option>
+        <option value="other">Other</option>
+      </select>
+      <select id="f-sig">
+        <option value="all">All Signals</option>
+        <option value="buy">Buy</option>
+        <option value="watch">Watch</option>
+        <option value="sell">Avoid</option>
+      </select>
+      <select id="f-hp">
+        <option value="0">All Health Scores</option>
+        <option value="70">70%+</option>
+        <option value="55">55%+</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-g" id="scan-btn" onclick="runScan()">▶ Scan Market</button>
+      <button class="btn-sm" id="export-btn" onclick="exportCSV()" style="display:none" title="Export results to CSV">⬇ CSV</button>
+      <button class="btn-sm" id="update-fun-btn" onclick="updateAllFundamentals()" title="Update all fundamentals via Claude AI">🔄 Update Analysis</button>
+    </div>
+  </div>
+  <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" id="s-bar"></div></div><div class="prog-msg" id="s-msg"></div></div>
+
+  <!-- Welcome / Empty state — shown before first scan -->
+  <div id="welcome-card">
+    <div class="welcome-inner">
+      <div class="welcome-icon">📊</div>
+      <h2 class="welcome-title">Welcome to Market Scanner</h2>
+      <p class="welcome-sub">Discover the top 30 US stock opportunities ranked by Health Score, with live prices, RSI, MACD, and entry/target levels.</p>
+      <div class="welcome-steps">
+        <div class="welcome-step">
+          <span class="welcome-step-num">1</span>
+          <span class="welcome-step-text">Click <strong>▶ Scan Market</strong> above to discover opportunities</span>
+        </div>
+        <div class="welcome-step">
+          <span class="welcome-step-num">2</span>
+          <span class="welcome-step-text">Filter by sector, signal, or health score</span>
+        </div>
+        <div class="welcome-step">
+          <span class="welcome-step-num">3</span>
+          <span class="welcome-step-text">Click any row for full technical analysis</span>
+        </div>
+      </div>
+      <div class="welcome-hint">
+        <span class="welcome-hint-icon">💡</span>
+        <span>Tip: Press <kbd>S</kbd> anytime to scan, <kbd>?</kbd> for keyboard shortcuts</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Panel 2 -->
+<div class="panel" id="p2">
+  <div class="input-box">
+    <div class="ilbl">Enter any stock ticker worldwide</div>
+    <div class="ihint">All tickers fetch <strong style="color:var(--green)">live prices from Finnhub</strong> automatically. New stocks not in the database use Claude AI + web search (requires API Key).</div>
+    <div class="irow">
+      <input class="tinp" id="tinp" placeholder="e.g. NVDA" maxlength="8" oninput="this.value=this.value.toUpperCase().replace(/DVULT/g,'DVLT')" onkeydown="if(event.key==='Enter')addT()">
+      <button class="btn-sm" onclick="addT()">+ Add</button>
+      <button class="btn-sm" style="color:var(--text3)" onclick="clearT()">× Clear</button>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Quick select:</div>
+    <div class="qrow">
+      <button class="qbtn" onclick="addGrp(['XOM','CVX','OXY','MPC'])">Energy ★</button>
+      <button class="qbtn" onclick="addGrp(['DNN','NXE','SLNH','DVLT'])">Uranium+AI</button>
+      <button class="qbtn" onclick="addGrp(['NVDA','AMD','MU'])">Chips</button>
+      <button class="qbtn" onclick="addGrp(['AAPL','MSFT','META','AMZN'])">Tech</button>
+      <button class="qbtn" onclick="addGrp(['JPM','GS','V'])">Finance</button>
+      <button class="qbtn" onclick="addGrp(['LMT','RTX'])">Defense</button>
+    </div>
+    <div class="chips" id="chips"><span style="font-size:11px;color:var(--text3);line-height:2.2">Add tickers to begin...</span></div>
+    <button class="btn-b" id="ana-btn" onclick="runAnalysis()">Analyze Selected Stocks ↗</button>
+  </div>
+  <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" id="m-bar"></div></div><div class="prog-msg" id="m-msg"></div></div>
+</div>
+
+<!-- Panel 3: Portfolio -->
+<div class="panel" id="p3">
+  <div class="input-box">
+    <div class="ilbl">💼 Portfolio Tracker — Live P&L</div>
+    <div class="ihint">Add your positions. Live prices update from Finnhub automatically.</div>
+    <div class="pos-add">
+      <div class="field-wrap">
+        <label class="field-label">Ticker</label>
+        <input id="pos-ticker" placeholder="AAPL" maxlength="8" oninput="this.value=this.value.toUpperCase()" style="width:85px">
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">Shares</label>
+        <input id="pos-qty" type="number" placeholder="10" min="0.001" step="any" style="width:85px">
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">Buy Price</label>
+        <input id="pos-buy" type="number" placeholder="180.50" min="0" step="any" style="width:105px">
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">Date</label>
+        <input id="pos-date" type="date" style="width:130px">
+      </div>
+      <button class="btn-g" onclick="addPosition()" style="padding:7px 16px;font-size:12px;margin-top:18px">+ Add Position</button>
+      <button class="btn-sm" onclick="refreshPortfolio()" style="font-size:11px;margin-top:18px">↻ Refresh P&L</button>
+    </div>
+    <div id="portfolio-body"></div>
+  <!-- Portfolio Doctor (sibling of portfolio-body so refreshPortfolio's innerHTML doesn't destroy it) -->
+  <div class="port-doc-wrap" id="port-doc-wrap" style="display:none">
+    <div class="port-doc-hdr">
+      <span>🧠 Portfolio Doctor</span>
+    </div>
+    <div id="port-doc-body"></div>
+  </div>
+  <div style="margin-top:.75rem;padding-top:.75rem;border-top:.5px solid var(--border)">
+    <button class="btn-b" id="port-doc-btn" onclick="runPortfolioDoctor()" style="font-size:12px;padding:7px 16px">🧠 Diagnose Portfolio</button>
+    <span style="font-size:11px;color:var(--text3);margin-left:8px">Claude analyzes concentration, correlation &amp; rebalancing</span>
+  </div>
+  </div>
+</div>
+
+<!-- Panel 4: Alerts -->
+<div class="panel" id="p4">
+  <div class="input-box">
+    <div class="ilbl">🔔 Price Alerts — Browser Notifications</div>
+    <div class="ihint">Get notified when a stock hits your target price. Alerts are checked on every price refresh.</div>
+    <div class="pos-add" style="margin-bottom:.5rem">
+      <div class="field-wrap">
+        <label class="field-label">Ticker</label>
+        <input id="alert-ticker" placeholder="AAPL" maxlength="8" oninput="this.value=this.value.toUpperCase()" style="width:85px">
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">Condition</label>
+        <select id="alert-dir" style="font-size:12px;padding:7px 10px;border:.5px solid var(--border);border-radius:var(--rad);background:var(--bg);color:var(--text)">
+          <option value="above">Price Above ▲</option>
+          <option value="below">Price Below ▼</option>
+        </select>
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">Target Price</label>
+        <input id="alert-price" type="number" placeholder="200" min="0" step="any" style="width:105px">
+      </div>
+      <button class="btn-g" onclick="addAlert()" style="padding:7px 16px;font-size:12px;margin-top:18px">+ Add Alert</button>
+      <button class="btn-sm" onclick="requestNotifPermission()" style="font-size:11px;margin-top:18px">🔔 Enable Notifications</button>
+    </div>
+    <div id="alerts-body"></div>
+  </div>
+</div>
+
+<!-- Panel 5: History -->
+<div class="panel" id="p5">
+  <div class="input-box">
+    <div class="ilbl" style="display:flex;justify-content:space-between;align-items:center">
+      <span>📜 Scan History</span>
+      <button class="btn-sm" onclick="clearHistory()" style="font-size:11px;color:var(--red)">Clear All</button>
+    </div>
+    <div class="ihint">Last 20 scans saved automatically. Click to view details.</div>
+    <div id="history-body"><div class="empty">No scan history yet</div></div>
+  </div>
+</div>
+
+<!-- Comparison Modal -->
+<div class="modal-ov" id="compare-modal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span style="font-size:15px;font-weight:600;color:var(--text)">Stock Comparison</span>
+      <button class="modal-close" onclick="closeComparison()">×</button>
+    </div>
+    <div id="compare-content"></div>
+  </div>
+</div>
+
+
+
+<!-- Panel 7: Market Liquidity -->
+<div class="panel" id="p7">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:15px;font-weight:700;color:var(--text)">US Market Liquidity Monitor</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">Daily conditions · Historical comparison · News impact analysis</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="liq-regime-badge" class="liq-regime normal">◆ Not run</span>
+      <button class="btn-b" onclick="runLiquidityAnalysis()" id="liq-run-btn" style="font-size:12px;padding:7px 16px">↻ Analyze Now</button>
+    </div>
+  </div>
+  <!-- Key Metrics Grid -->
+  <div class="liq-grid">
+    <div class="liq-card neut" id="liq-card-vix"><div class="liq-label">VIX — Fear Index</div><div class="liq-val" id="liq-vix">—</div><div class="liq-sub">Market Volatility</div><div class="liq-chg" id="liq-vix-chg"></div></div>
+    <div class="liq-card neut" id="liq-card-vol"><div class="liq-label">SPY Volume Ratio</div><div class="liq-val" id="liq-spy-vol">—</div><div class="liq-sub">vs 20-Day Average</div><div class="liq-chg" id="liq-spy-chg"></div></div>
+    <div class="liq-card neut" id="liq-card-hyg"><div class="liq-label">HYG (Credit Proxy)</div><div class="liq-val" id="liq-hyg">—</div><div class="liq-sub">High-Yield Bond ETF</div><div class="liq-chg" id="liq-hyg-chg"></div></div>
+    <div class="liq-card neut" id="liq-card-breadth"><div class="liq-label">Breadth (IWM/SPY)</div><div class="liq-val" id="liq-breadth">—</div><div class="liq-sub">Small vs Large Cap</div><div class="liq-chg" id="liq-breadth-chg"></div></div>
+  </div>
+  <!-- Score + News Impact -->
+  <div class="liq-impact">
+    <div class="liq-impact-card">
+      <div class="liq-impact-title">💧 Liquidity Score Today</div>
+      <div style="font-size:28px;font-weight:700" id="liq-score-today">—</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px" id="liq-score-label">Run analysis to compute</div>
+      <div style="height:6px;background:var(--bg2);border-radius:99px;margin-top:10px;overflow:hidden">
+        <div id="liq-score-bar" style="height:100%;border-radius:99px;width:0%;transition:width .8s"></div>
+      </div>
+    </div>
+    <div class="liq-impact-card">
+      <div class="liq-impact-title">📰 News Impact on Liquidity</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.75" id="liq-news-impact">Analysis will appear here...</div>
+    </div>
+  </div>
+  <!-- Historical -->
+  <div class="liq-history">
+    <div class="liq-hist-hdr">
+      <span>📅 Historical Scores — Last 7 Days</span>
+      <button onclick="clearLiquidityHistory()" style="font-size:10px;padding:2px 8px;border:.5px solid var(--border);border-radius:99px;background:var(--bg3);color:var(--text3);cursor:pointer">Clear</button>
+    </div>
+    <div id="liq-hist-body"><div style="font-size:12px;color:var(--text3);padding:.5rem 0">No history yet — run first analysis</div></div>
+  </div>
+  <!-- Claude Analysis -->
+  <div class="liq-analysis" id="liq-analysis">
+    <div style="text-align:center;padding:1.25rem;color:var(--text3)">
+      <div style="font-size:28px;margin-bottom:8px">💧</div>
+      <div style="font-size:13px;font-weight:600;color:var(--text)">US Market Liquidity Analysis</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.7">Click <strong style="color:var(--blue)">↻ Analyze Now</strong> to fetch live data<br>VIX · SPY Volume · HYG Credit · IWM/SPY Breadth · Claude interpretation</div>
+    </div>
+  </div>
+</div>
+
+<!-- Panel 8: Elite Investment Engine -->
+<div class="panel" id="p8">
+  <!-- Header -->
+  <div class="elite-header">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.3px">🏛️ Institutional Elite Engine</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">TOP 25 US Stocks · 9-Step Framework · Live Market Analysis</div>
+      </div>
+      <button class="btn-g" id="elite-run-btn" onclick="runEliteEngine()" style="font-size:13px;padding:9px 22px">
+        ▶ Run Analysis
+      </button>
+    </div>
+    <div class="elite-masters">
+      <span class="elite-master">🏦 Buffett (Quality)</span>
+      <span class="elite-master">📐 Graham (Value)</span>
+      <span class="elite-master">📈 Lynch (Growth)</span>
+      <span class="elite-master">🌊 Dalio (Macro)</span>
+      <span class="elite-master">♟️ Soros (Reflexivity)</span>
+      <span class="elite-master">⚡ Livermore (Price Action)</span>
+      <span class="elite-master">🎯 Druckenmiller (Asymmetry)</span>
+      <span class="elite-master">🔢 Simons (Quant)</span>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="elite-progress-wrap" id="elite-progress" style="display:none">
+    <div class="elite-progress-bar"><div class="elite-progress-fill" id="elite-prog-fill" style="width:0%"></div></div>
+    <div class="elite-progress-msg" id="elite-prog-msg">Initializing...</div>
+  </div>
+
+  <!-- Output container -->
+  <div id="elite-output">
+    <div style="text-align:center;padding:2.5rem 1rem;color:var(--text3)">
+      <div style="font-size:36px;margin-bottom:12px">🏛️</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Institutional Investment Engine</div>
+      <div style="font-size:12px;line-height:1.8;max-width:480px;margin:0 auto">
+        Analyzes S&P 500 + Nasdaq 100 + liquid mid caps through<br>
+        8 legendary investor frameworks in 9 structured steps.<br><br>
+        <strong style="color:var(--blue)">Requires Anthropic API key · Takes 30-60 seconds</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Panel 9: Watchlist -->
+<div class="panel" id="p9">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:15px;font-weight:700;color:var(--text)">👁 Watchlist & Price Targets</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">Track any stock · Set alerts · Monitor distance to target</div>
+    </div>
+  </div>
+  <div class="watch-add-row">
+    <div class="field-wrap">
+      <label class="field-label">Ticker</label>
+      <input class="watch-inp" id="watch-ticker-inp" placeholder="AAPL" maxlength="8" style="width:90px" oninput="this.value=this.value.toUpperCase()">
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Entry $</label>
+      <input class="watch-inp" id="watch-entry-inp" placeholder="180" type="number" step="0.01" style="width:100px;font-family:var(--font)">
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Target $</label>
+      <input class="watch-inp" id="watch-target-inp" placeholder="220" type="number" step="0.01" style="width:100px;font-family:var(--font)">
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Stop $</label>
+      <input class="watch-inp" id="watch-stop-inp" placeholder="170" type="number" step="0.01" style="width:100px;font-family:var(--font)">
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Note (optional)</label>
+      <input class="watch-inp" id="watch-note-inp" placeholder="Earnings play..." style="width:160px;font-family:var(--font);text-transform:none">
+    </div>
+    <button class="btn-b" onclick="addToWatchlist()" style="font-size:12px;padding:7px 16px;margin-top:18px">+ Add</button>
+  </div>
+  <div id="watchlist-body"></div>
+  <div style="margin-top:1rem;padding-top:.75rem;border-top:.5px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <button class="btn-sm" onclick="refreshWatchlistPrices()" style="font-size:12px">↻ Refresh Prices</button>
+    <button class="btn-sm" onclick="clearWatchlist()" style="font-size:12px;color:var(--red)">🗑 Clear All</button>
+    <span id="watchlist-ts" style="font-size:11px;color:var(--text3)"></span>
+  </div>
+</div>
+
+
+
+
+
+<!-- Shared Results -->
+<div id="shared" style="display:none">
+  <!-- Sector ETF Heatmap -->
+  <div id="sector-heatmap-wrap" style="margin-bottom:1.25rem;display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem">
+      <span style="font-size:12px;font-weight:600;color:var(--text)">📊 Sector Rotation Heatmap <span style="font-size:10px;color:var(--text3);font-weight:400">— live from Finnhub</span></span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="loadSectorHeatmap()" class="btn-sm" style="font-size:10px;padding:4px 10px">↻ Refresh</button>
+        <span id="heatmap-ts" style="font-size:10px;color:var(--text3)"></span></div>
+    </div>
+    <div class="heatmap-grid" id="heatmap-grid">
+      <div style="font-size:11px;color:var(--text3);padding:.5rem">Loading sector data...</div>
+    </div>
+  </div>
+  <!-- Market Intelligence Banner -->
+  <div class="mkt-intel" id="mkt-intel">
+    <div class="mkt-intel-hdr"><span>🧠</span><span>Market Intelligence</span><span id="mkt-intel-ts" style="font-size:10px;font-weight:400;color:var(--text3);margin-left:auto"></span></div>
+    <div id="mkt-intel-body"></div>
+  </div>
+
+  <!-- Yahoo status bar -->
+  <div class="yahoo-bar" id="yahoo-bar" style="display:none">
+    <div class="yb-item"><span class="yb-dot" id="yb-dot"></span><span id="yb-msg">Connecting to Finnhub...</span></div>
+    <span style="color:var(--border2)">|</span>
+    <span id="yb-stats" style="color:var(--text2)"></span>
+    <span style="color:var(--border2)">|</span>
+    <span id="yb-time" style="color:var(--text3)"></span>
+  </div>
+
+  <div class="mkt">
+    <div class="mk"><div class="ml"><span class="mk-live" id="idx-dot" style="display:none"></span>S&P 500</div><div class="mv r" id="m-sp">—</div></div>
+    <div class="mk"><div class="ml">NASDAQ</div><div class="mv r" id="m-nq">—</div></div>
+    <div class="mk"><div class="ml">VIX</div><div class="mv r" id="m-vx">—</div></div>
+    <div class="mk"><div class="ml">WTI Oil</div><div class="mv g" id="m-oil">—</div></div>
+    <div class="mk"><div class="ml">Gold</div><div class="mv g" id="m-gld">—</div></div>
+    <div class="mk"><div class="ml">Best Sector</div><div class="mv g" id="m-sec">—</div></div>
+    <div class="mk"><div class="ml">Market Mood</div><div class="mv a" id="m-mood">—</div></div>
+    <div class="mk"><div class="ml">Liquidity</div><div class="mv b" id="m-liq">—</div></div>
+  </div>
+  <!-- Scan Session Summary Bar -->
+  <div id="scan-summary-bar" style="display:none;background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rad);padding:.6rem 1rem;margin-bottom:.85rem;display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:11px">
+    <span style="color:var(--text3)">Scan <strong id="ss-id" style="color:var(--blue)">#1</strong></span>
+    <span style="color:var(--text3)">Time: <strong id="ss-time" style="color:var(--text)">—</strong></span>
+    <span style="color:var(--text3)">Stocks: <strong id="ss-count" style="color:var(--text)">—</strong></span>
+    <span style="color:var(--text3)">Source: <strong id="ss-source" style="color:var(--green)">Finnhub Live</strong></span>
+    <span style="color:var(--text3)">Liquidity: <strong id="ss-liq" style="color:var(--blue)">—</strong></span>
+    <span id="ss-news-badge" style="display:none;background:var(--green-bg);color:var(--green);border:.5px solid rgba(34,197,94,.3);padding:1px 8px;border-radius:99px;font-weight:600">News Ready</span>
+  </div>
+  <div class="metrics">
+    <div class="mc"><div class="lbl">Stocks Analyzed</div><div class="val" id="cnt">—</div><div class="sub" id="cnt2"></div></div>
+    <div class="mc"><div class="lbl">Buy Opportunities</div><div class="val g" id="buys">—</div><div class="sub" id="buys2"></div></div>
+    <div class="mc"><div class="lbl">Avoid</div><div class="val r" id="sells">—</div><div class="sub">Weak signal</div></div>
+    <div class="mc"><div class="lbl">Best Opportunity</div><div class="val b" id="top" style="font-size:15px">—</div><div class="sub" id="top2"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><span id="res-lbl">Results <span class="star">★</span></span><div style="display:flex;align-items:center;gap:10px"><span id="res-cnt" style="font-size:11px;color:var(--text3);font-weight:400"></span><span id="scan-ts-badge" style="display:none;font-size:10px;color:var(--text3)"></span><button class="btn-sm" onclick="exportCSV()" style="font-size:11px;padding:4px 10px">⬇ CSV</button><button class="btn-sm" id="refresh-btn" onclick="refreshPrices()" style="font-size:11px;padding:4px 10px;color:var(--green);border-color:rgba(34,197,94,0.3);display:none">↻ Refresh Prices</button></div></div>
+    <div class="tbl-wrap"><div id="tbl"></div></div>
+  </div>
+  <div class="news-sec">
+    <div class="news-hdr"><span>News — Linked to Displayed Stocks</span><span id="news-cnt" style="font-size:11px;color:var(--text3);font-weight:400"></span></div>
+    <div id="news-body"></div>
+  </div>
+</div>
+
+
+<!-- PWA Install Banner -->
+<div class="pwa-banner" id="pwa-banner">
+  <div class="pwa-banner-text">📱 Install Market Scanner as an app for offline access &amp; price alerts</div>
+  <button class="pwa-install-btn" onclick="installPWA()">Install</button>
+  <button class="pwa-close" onclick="dismissPWA()">✕</button>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  PERMANENT LEGAL DISCLAIMER & LIABILITY WAIVER                ║ -->
+<!-- ║  Always visible at bottom of page — cannot be dismissed       ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<section class="legal-disclaimer" aria-label="Legal Disclaimer and Liability Waiver">
+  <div class="legal-hdr">
+    <span class="legal-icon">⚖️</span>
+    <span class="legal-title">LEGAL DISCLAIMER &amp; LIABILITY WAIVER</span>
+  </div>
+  <div class="legal-body">
+    <p class="legal-clause">
+      <strong class="legal-num">1. NO FINANCIAL ADVICE.</strong>
+      This software is a <strong>personal research and educational tool</strong> only. It does <strong>NOT</strong> constitute, and shall never be construed as, investment advice, financial advice, trading advice, brokerage services, securities recommendations, tax advice, legal advice, or any other regulated professional service. The developer is <strong>NOT a licensed financial advisor, broker, dealer, investment adviser, or fiduciary</strong> in any jurisdiction.
+    </p>
+    <p class="legal-clause">
+      <strong class="legal-num">2. NO WARRANTY OF ACCURACY.</strong>
+      All data, prices, indicators, signals, scores, news, analyses, and AI-generated content are provided <strong>"AS IS" and "AS AVAILABLE"</strong> without any warranty of any kind, express or implied, including but not limited to warranties of accuracy, completeness, reliability, timeliness, fitness for a particular purpose, or non-infringement. Data is sourced from third parties (Finnhub, Anthropic Claude AI, public news sources) and may contain errors, delays, hallucinations, or omissions.
+    </p>
+    <p class="legal-clause">
+      <strong class="legal-num">3. FULL LIABILITY WAIVER.</strong>
+      To the fullest extent permitted by applicable law, the developer, contributors, and any affiliated parties shall <strong>NOT be liable</strong> for any direct, indirect, incidental, special, consequential, punitive, or exemplary damages — including but not limited to financial losses, lost profits, lost capital, lost opportunities, trading losses, missed gains, emotional distress, or any other damages — arising from or related to the use of, inability to use, or reliance upon this tool, its data, or its outputs.
+    </p>
+    <p class="legal-clause">
+      <strong class="legal-num">4. USER ASSUMES ALL RISK.</strong>
+      By accessing or using this tool, you acknowledge and agree that: <strong>(a)</strong> you are solely responsible for your own investment decisions; <strong>(b)</strong> you will independently verify all information before acting on it; <strong>(c)</strong> you understand that trading and investing in securities, commodities, currencies, derivatives, and other financial instruments involves substantial risk of loss, including total loss of capital; <strong>(d)</strong> past performance does not guarantee future results; and <strong>(e)</strong> you accept full responsibility for any and all consequences of using this tool.
+    </p>
+    <p class="legal-clause">
+      <strong class="legal-num">5. NO FIDUCIARY RELATIONSHIP.</strong>
+      Use of this tool does <strong>NOT</strong> create any fiduciary, advisory, contractual, or professional relationship between you and the developer. You should consult <strong>qualified, licensed professionals</strong> — including financial advisors, attorneys, and tax accountants regulated in your jurisdiction — before making any investment, financial, legal, or tax decisions.
+    </p>
+    <p class="legal-clause">
+      <strong class="legal-num">6. INDEMNIFICATION.</strong>
+      You agree to <strong>indemnify, defend, and hold harmless</strong> the developer and any affiliated parties from and against any and all claims, liabilities, damages, losses, costs, expenses, and fees (including reasonable attorneys' fees) arising from your use or misuse of this tool, your violation of these terms, or your violation of any applicable laws or regulations.
+    </p>
+    <p class="legal-clause">
+      <strong class="legal-num">7. JURISDICTION &amp; CHANGES.</strong>
+      This tool is provided globally and may not comply with local financial regulations in every jurisdiction. It is <strong>your responsibility</strong> to determine whether use of this tool is legal in your country. The developer reserves the right to modify, suspend, or discontinue this tool and these terms at any time without notice.
+    </p>
+    <p class="legal-final">
+      <strong>BY USING THIS TOOL, YOU EXPLICITLY ACKNOWLEDGE THAT YOU HAVE READ, UNDERSTOOD, AND ACCEPT THIS DISCLAIMER AND LIABILITY WAIVER IN FULL. IF YOU DO NOT AGREE, DO NOT USE THIS TOOL.</strong>
+    </p>
+    <p class="legal-meta">
+      Developer: Al-Moutaz Billah Tarabzouni · Contact: @Moutaz_ez (X) · Last updated: 2026
+    </p>
+  </div>
+</section>
+
+<div class="footer">
+  <span>Professional Market Scanner © 2026</span>
+  <span class="footer-sep">·</span>
+  <span>Personal research tool — <strong style="color:var(--amber)">not financial advice</strong></span>
+  <span class="footer-sep">·</span>
+  <span>Data: Finnhub + Claude AI</span>
+  <span class="footer-sep">·</span>
+  <a href="#" onclick="openDisclaimerModal();return false" class="footer-link">Full Disclaimer</a>
+</div>
+<div class="watermark">
+  <div class="watermark-credit">
+    <span class="watermark-credit-label">Created by</span>
+    <span class="watermark-credit-name">Al-Moutaz Billah Tarabzouni</span>
+  </div>
+  <div class="watermark-divider"></div>
+  <a class="watermark-handle" href="https://x.com/Moutaz_ez" target="_blank" rel="noopener noreferrer" title="Follow on X">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+    @Moutaz_ez
+  </a>
+</div>
+</div>
+
+<script src="app.js"></script>
+
+<!-- ── Full Disclaimer Modal ── -->
+<div id="disclaimer-modal" class="disclaimer-modal" onclick="if(event.target===this)closeDisclaimerModal()">
+  <div class="disc-modal-inner">
+    <div class="disc-modal-hdr">
+      <span class="disc-modal-title">⚠️ Important Disclaimer</span>
+      <button class="disc-modal-close" onclick="closeDisclaimerModal()" type="button">×</button>
+    </div>
+    <div class="disc-modal-body">
+      <div class="disc-section">
+        <div class="disc-section-title">📋 Nature of This Tool</div>
+        <p>This is a <strong>personal research and educational tool</strong> built by an independent developer. It is <strong>NOT</strong>:</p>
+        <ul>
+          <li>Licensed financial advice or investment recommendation</li>
+          <li>A regulated trading platform or broker</li>
+          <li>A substitute for professional financial counsel</li>
+          <li>Affiliated with any financial institution</li>
+        </ul>
+      </div>
+
+      <div class="disc-section">
+        <div class="disc-section-title">📡 Data Sources</div>
+        <p>This tool aggregates data from third-party services:</p>
+        <ul>
+          <li><strong>Finnhub.io</strong> — Live stock prices and historical candles (free tier)</li>
+          <li><strong>Anthropic Claude AI</strong> — Algorithmic analysis (requires your API key)</li>
+          <li><strong>Web Search</strong> — News from Bloomberg, Reuters, WSJ, CNBC, Financial Times, MarketWatch, etc.</li>
+        </ul>
+        <p>Data accuracy depends on these providers. <strong>We do not verify or guarantee any data.</strong></p>
+      </div>
+
+      <div class="disc-section">
+        <div class="disc-section-title">🤖 AI Limitations</div>
+        <p>Claude AI analyses are <strong>algorithmic and may contain errors</strong> including:</p>
+        <ul>
+          <li>Hallucinations (fabricated information that sounds plausible)</li>
+          <li>Outdated training data (knowledge cutoff dates)</li>
+          <li>Misinterpretation of news or financial signals</li>
+          <li>Confidence in incorrect conclusions</li>
+        </ul>
+        <p><strong>Always verify AI claims independently before acting on them.</strong></p>
+      </div>
+
+      <div class="disc-section">
+        <div class="disc-section-title">📊 Health Scores & Signals</div>
+        <p>The "Health Score" (0–100%) and signals (Buy/Watch/Sell) are computed by <strong>proprietary algorithms</strong> using technical indicators (RSI, MACD, moving averages). These are:</p>
+        <ul>
+          <li>Not industry-standard metrics</li>
+          <li>Not validated by financial professionals</li>
+          <li>Not based on fundamental analysis depth used by analysts</li>
+          <li>For educational illustration, not actionable trading signals</li>
+        </ul>
+      </div>
+
+      <div class="disc-section">
+        <div class="disc-section-title">⚖️ No Liability</div>
+        <p>The developer:</p>
+        <ul>
+          <li>Makes no warranties about accuracy, completeness, or fitness for purpose</li>
+          <li>Is not liable for any financial losses, missed opportunities, or damages</li>
+          <li>Provides this tool "as-is" without guarantee of uptime or correctness</li>
+        </ul>
+        <p><strong>You assume full responsibility for any investment decisions or actions taken.</strong></p>
+      </div>
+
+      <div class="disc-section">
+        <div class="disc-section-title">🔒 Privacy & Data</div>
+        <p>This tool runs <strong>entirely in your browser</strong>:</p>
+        <ul>
+          <li>No personal data is sent to the developer</li>
+          <li>All settings, portfolio, and watchlists are stored locally (browser storage)</li>
+          <li>API calls go directly to Finnhub and Anthropic from your browser</li>
+          <li>Your Claude API key is stored only in your browser's local storage</li>
+        </ul>
+      </div>
+
+      <div class="disc-section">
+        <div class="disc-section-title">📜 Past Performance</div>
+        <p><strong>Past performance does not guarantee future results.</strong> Stock markets are inherently risky. You can lose money — including all of your invested capital.</p>
+      </div>
+
+      <div class="disc-section">
+        <div class="disc-section-title">👨‍💼 Recommendation</div>
+        <p>Before making any investment decision, <strong>consult a licensed financial advisor</strong> in your jurisdiction who can:</p>
+        <ul>
+          <li>Assess your personal financial situation</li>
+          <li>Understand your risk tolerance</li>
+          <li>Provide regulated advice with fiduciary responsibility</li>
+          <li>Help you comply with local tax and securities laws</li>
+        </ul>
+      </div>
+
+      <div class="disc-final">
+        By using this tool, you acknowledge and accept these terms. If you do not agree, please do not use the scanner.
+      </div>
+    </div>
+    <div class="disc-modal-footer">
+      <button class="disc-modal-accept" onclick="acceptDisclaimer()" type="button">I Understand</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Breaking News Ticker -->
+<div class="news-ticker-wrap" id="news-ticker-wrap" style="display:none">
+  <div class="news-ticker-label">
+    <span class="news-ticker-live"></span>LIVE NEWS
+  </div>
+  <div class="news-ticker-track">
+    <div class="news-ticker-inner" id="news-ticker-inner"></div>
+  </div>
+</div>
+
+
+<!-- Claude Auto-Audit Panel -->
+<div id="claude-audit-panel">
+  <div class="audit-hdr">
+    <div class="audit-logo">✦</div>
+    <div class="audit-title">
+      <div class="audit-title-main">Claude System Audit</div>
+      <div class="audit-title-sub" id="audit-timestamp">Initializing...</div>
+    </div>
+    <button class="audit-close" onclick="closeAuditPanel()">✕</button>
+  </div>
+  <div class="audit-body">
+    <div class="audit-status checking" id="audit-status">
+      <div class="audit-status-icon">⟳</div>
+      <div class="audit-status-text">
+        <div class="audit-status-title">Running audit...</div>
+        <div class="audit-status-sub" id="audit-status-sub">Checking all systems</div>
+      </div>
+    </div>
+    <div class="audit-checks" id="audit-checks"></div>
+    <div class="audit-ai-section" id="audit-ai-section" style="display:none">
+      <div class="audit-ai-hdr">
+        <span class="audit-trigger-dot"></span>Claude Analysis
+      </div>
+      <div class="audit-ai-text" id="audit-ai-text">
+        <div class="audit-thinking">
+          <div class="audit-dot"></div><div class="audit-dot"></div><div class="audit-dot"></div>
+          <span style="margin-left:8px;font-size:11px;color:var(--text3)">Claude is reviewing the scanner...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="audit-footer">
+    <button class="audit-btn primary" onclick="runAudit()">↻ Re-run Audit</button>
+    <button class="audit-btn" onclick="runScan();closeAuditPanel()">Scan Market</button>
+    <button class="audit-btn" onclick="closeAuditPanel()">Dismiss</button>
+  </div>
+</div>
+
+</body>
+</html>
